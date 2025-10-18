@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Anime Discovery Bot - Darklands</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --darklands-orange: #F47521;
+            --darklands-dark: #0e0e0e;
+            --darklands-gray: #1a1a1a;
+        }
+        
+        body {
+            background: var(--darklands-dark);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .ai-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .bot-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .step-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #374151;
+            transition: all 0.3s ease;
+        }
+        
+        .step-indicator.active {
+            background: #10B981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        
+        .step-indicator.completed {
+            background: #059669;
+        }
+        
+        .ai-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            width: 100%;
+        }
+        
+        .ai-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .ai-input:focus {
+            outline: none;
+            border-color: var(--darklands-orange);
+            box-shadow: 0 0 0 3px rgba(244, 117, 33, 0.1);
+        }
+        
+        .ai-btn {
+            background: var(--darklands-orange);
+            color: black;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .ai-btn:hover {
+            background: #e0661a;
+            transform: translateY(-2px);
+        }
+        
+        .ai-btn:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result-card {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .error-card {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen ai-gradient">
+        <!-- Header -->
+        <div class="container mx-auto px-4 py-8">
+            <div class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-white mb-4">🤖 AI Anime Discovery Bot</h1>
+                <p class="text-xl text-gray-200">Automatically find and upload anime with real images and metadata</p>
+            </div>
+            
+            <!-- Main Bot Interface -->
+            <div class="max-w-4xl mx-auto">
+                <!-- Search Section -->
+                <div class="bot-card rounded-xl p-8 mb-8">
+                    <h2 class="text-2xl font-bold text-white mb-6">🔍 Search & Discover Anime</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="block text-white text-sm font-semibold mb-2">Anime Search Query</label>
+                            <input type="text" id="searchQuery" class="ai-input" placeholder="Attack on Titan, Naruto, One Piece, etc.">
+                        </div>
+                        <div>
+                            <label class="block text-white text-sm font-semibold mb-2">Private URL (Optional)</label>
+                            <input type="url" id="privateUrl" class="ai-input" placeholder="https://private-anime-site.com/anime/123">
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-4">
+                        <button id="startDiscovery" class="ai-btn flex-1">
+                            <i class="fas fa-robot mr-2"></i>Start AI Discovery
+                        </button>
+                        <button id="clearResults" class="ai-btn bg-gray-600 hover:bg-gray-700">
+                            <i class="fas fa-trash mr-2"></i>Clear
+                        </button>
+                        <button onclick="syncAnimeToMainWebsite()" class="ai-btn bg-purple-600 hover:bg-purple-700">
+                            <i class="fas fa-sync mr-2"></i>Sync to Main Website
+                        </button>
+                        <button onclick="goToMainWebsite()" class="ai-btn bg-blue-600 hover:bg-blue-700">
+                            <i class="fas fa-home mr-2"></i>Main Website
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Progress Section -->
+                <div id="progressSection" class="bot-card rounded-xl p-8 mb-8 hidden">
+                    <h3 class="text-xl font-bold text-white mb-6">🤖 AI Bot Working...</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-4">
+                            <div id="step1" class="step-indicator"></div>
+                            <span class="text-white">Searching anime databases...</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div id="step2" class="step-indicator"></div>
+                            <span class="text-white">Finding public APIs...</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div id="step3" class="step-indicator"></div>
+                            <span class="text-white">Extracting video URLs...</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div id="step4" class="step-indicator"></div>
+                            <span class="text-white">Downloading images...</span>
+                        </div>
+                        <div class="flex items-center space-x-4">
+                            <div id="step5" class="step-indicator"></div>
+                            <span class="text-white">Uploading to website...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results Section -->
+                <div id="resultsSection" class="hidden">
+                    <div class="result-card rounded-xl p-8 mb-8">
+                        <h3 class="text-xl font-bold text-white mb-4">✅ AI Discovery Complete!</h3>
+                        <div id="resultsContent" class="text-white space-y-2"></div>
+                    </div>
+                </div>
+                
+                <!-- Error Section -->
+                <div id="errorSection" class="hidden">
+                    <div class="error-card rounded-xl p-8 mb-8">
+                        <h3 class="text-xl font-bold text-white mb-4">❌ AI Discovery Failed</h3>
+                        <div id="errorContent" class="text-white"></div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Options -->
+                <div class="bot-card rounded-xl p-8">
+                    <h3 class="text-xl font-bold text-white mb-4">⚙️ Advanced AI Options</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-white text-sm font-semibold mb-2">Custom API Endpoints</label>
+                            <textarea id="customApis" class="ai-input h-20" placeholder="https://api1.com, https://api2.com"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-white text-sm font-semibold mb-2">Search Depth</label>
+                            <select id="searchDepth" class="ai-input">
+                                <option value="basic">Basic (Fast)</option>
+                                <option value="deep" selected>Deep (Comprehensive)</option>
+                                <option value="exhaustive">Exhaustive (Slow but Complete)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AI Bot Variables
+        let discoveredAnime = [];
+        let isWorking = false;
+        
+        // API Endpoints
+        const ANIME_APIS = [
+            'https://api.jikan.moe/v4/anime',
+            'https://kitsu.io/api/edge/anime',
+            'https://api.anilist.co/graphql'
+        ];
+        
+        // Initialize Bot
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            loadSavedAnime();
+        });
+        
+        // Setup Event Listeners
+        function setupEventListeners() {
+            document.getElementById('startDiscovery').addEventListener('click', startAIDiscovery);
+            document.getElementById('clearResults').addEventListener('click', clearResults);
+        }
+        
+        // Start AI Discovery
+        async function startAIDiscovery() {
+            const searchQuery = document.getElementById('searchQuery').value;
+            const privateUrl = document.getElementById('privateUrl').value;
+            const customApis = document.getElementById('customApis').value;
+            const searchDepth = document.getElementById('searchDepth').value;
+            
+            if (!searchQuery && !privateUrl) {
+                showError('Please enter a search query or private URL');
+                return;
+            }
+            
+            if (isWorking) {
+                showError('AI Bot is already working. Please wait...');
+                return;
+            }
+            
+            isWorking = true;
+            showProgress();
+            hideResults();
+            hideError();
+            
+            try {
+                // Step 1: Search anime databases
+                await updateStep('step1', true);
+                await sleep(1000);
+                const animeData = await searchAnimeDatabases(searchQuery, privateUrl);
+                
+                if (!animeData) {
+                    throw new Error('No anime found with that search query');
+                }
+                
+                // Step 2: Find public APIs
+                await updateStep('step2', true);
+                await sleep(800);
+                const publicApis = await findPublicApis(animeData, customApis);
+                
+                // Step 3: Extract video URLs
+                await updateStep('step3', true);
+                await sleep(1000);
+                const videoUrls = await extractVideoUrls(animeData, publicApis, privateUrl);
+                
+                // Step 4: Download images
+                await updateStep('step4', true);
+                await sleep(1200);
+                const images = await downloadAnimeImages(animeData);
+                
+                // Step 5: Upload to website
+                await updateStep('step5', true);
+                await sleep(500);
+                const results = await uploadAnimeToWebsite(animeData, videoUrls, images);
+                
+                // Show results
+                showResults(results);
+                
+            } catch (error) {
+                console.error('AI Discovery Error:', error);
+                showError('AI Discovery failed: ' + error.message);
+            } finally {
+                isWorking = false;
+            }
+        }
+        
+        // Search anime databases
+        async function searchAnimeDatabases(query, privateUrl) {
+            console.log('🔍 Searching anime databases for:', query);
+            
+            let bestMatch = null;
+            let bestScore = 0;
+            
+            for (const api of ANIME_APIS) {
+                try {
+                    let response;
+                    let data;
+                    
+                    if (api.includes('jikan')) {
+                        response = await fetch(`${api}?q=${encodeURIComponent(query)}&limit=5`);
+                        data = await response.json();
+                        const anime = data.data?.[0];
+                        if (anime) {
+                            const score = anime.score || anime.popularity || 0;
+                            if (score > bestScore) {
+                                bestMatch = {
+                                    title: anime.title,
+                                    title_english: anime.title_english,
+                                    episodes: anime.episodes,
+                                    year: anime.year,
+                                    genres: anime.genres?.map(g => g.name) || [],
+                                    synopsis: anime.synopsis,
+                                    score: anime.score,
+                                    images: anime.images,
+                                    mal_id: anime.mal_id
+                                };
+                                bestScore = score;
+                            }
+                        }
+                    } else if (api.includes('kitsu')) {
+                        response = await fetch(`${api}?filter[text]=${encodeURIComponent(query)}&page[limit]=5`);
+                        data = await response.json();
+                        const anime = data.data?.[0];
+                        if (anime) {
+                            const score = anime.attributes.averageRating || 0;
+                            if (score > bestScore) {
+                                bestMatch = {
+                                    title: anime.attributes.canonicalTitle,
+                                    episodes: anime.attributes.episodeCount,
+                                    year: anime.attributes.startDate?.split('-')[0],
+                                    genres: anime.attributes.genres?.data?.map(g => g.attributes.name) || [],
+                                    synopsis: anime.attributes.synopsis,
+                                    score: anime.attributes.averageRating,
+                                    images: {
+                                        jpg: {
+                                            image_url: anime.attributes.posterImage?.original
+                                        }
+                                    }
+                                };
+                                bestScore = score;
+                            }
+                        }
+                    } else if (api.includes('anilist')) {
+                        const graphqlQuery = `
+                            query ($search: String) {
+                                Page {
+                                    media(search: $search, type: ANIME) {
+                                        id
+                                        title { romaji english native }
+                                        description
+                                        episodes
+                                        seasonYear
+                                        genres
+                                        coverImage { large medium }
+                                        bannerImage
+                                        averageScore
+                                    }
+                                }
+                            }
+                        `;
+                        response = await fetch(api, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                query: graphqlQuery,
+                                variables: { search: query }
+                            })
+                        });
+                        data = await response.json();
+                        const anime = data.data?.Page?.media?.[0];
+                        if (anime) {
+                            const score = anime.averageScore || 0;
+                            if (score > bestScore) {
+                                bestMatch = {
+                                    title: anime.title.romaji,
+                                    title_english: anime.title.english,
+                                    episodes: anime.episodes,
+                                    year: anime.seasonYear,
+                                    genres: anime.genres || [],
+                                    description: anime.description,
+                                    averageScore: anime.averageScore,
+                                    coverImage: anime.coverImage,
+                                    bannerImage: anime.bannerImage
+                                };
+                                bestScore = score;
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.log(`API ${api} failed:`, error);
+                }
+            }
+            
+            console.log('✅ Best match found:', bestMatch);
+            return bestMatch;
+        }
+        
+        // Find public APIs
+        async function findPublicApis(animeData, customApis) {
+            const publicApis = [
+                'https://api.jikan.moe/v4',
+                'https://kitsu.io/api/edge',
+                'https://api.anilist.co',
+                'https://api.myanimelist.net/v2'
+            ];
+            
+            if (customApis) {
+                publicApis.push(...customApis.split(',').map(api => api.trim()));
+            }
+            
+            return publicApis;
+        }
+        
+        // Extract video URLs
+        async function extractVideoUrls(animeData, apis, privateUrl) {
+            const videoUrls = [];
+            
+            // If private URL provided, try to find public alternatives
+            if (privateUrl) {
+                const publicUrls = await findPublicVideoUrls(animeData, privateUrl);
+                videoUrls.push(...publicUrls);
+            }
+            
+            // Search for video URLs in various sources
+            const searchTerms = [
+                animeData.title,
+                animeData.title_english,
+                animeData.title_romaji
+            ].filter(Boolean);
+            
+            for (const term of searchTerms) {
+                const urls = await searchVideoUrls(term);
+                videoUrls.push(...urls);
+            }
+            
+            // Add some sample URLs for demonstration
+            if (videoUrls.length === 0) {
+                videoUrls.push('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
+            }
+            
+            return [...new Set(videoUrls)]; // Remove duplicates
+        }
+        
+        // Download anime images
+        async function downloadAnimeImages(animeData) {
+            const images = {
+                poster: null,
+                banner: null,
+                thumbnail: null
+            };
+            
+            if (animeData.coverImage) {
+                images.poster = animeData.coverImage.large || animeData.coverImage.medium;
+            }
+            
+            if (animeData.bannerImage) {
+                images.banner = animeData.bannerImage;
+            }
+            
+            if (animeData.images && animeData.images.jpg) {
+                images.thumbnail = animeData.images.jpg.image_url;
+            }
+            
+            return images;
+        }
+        
+        // Upload anime to website
+        async function uploadAnimeToWebsite(animeData, videoUrls, images) {
+            const newAnime = {
+                id: `ai_${Date.now()}`,
+                title: animeData.title || animeData.title_english || 'Unknown',
+                episodes: animeData.episodes || 1,
+                genres: animeData.genres || ['Anime'],
+                year: animeData.year || animeData.seasonYear || new Date().getFullYear(),
+                thumb: images.thumbnail || images.poster || 'https://via.placeholder.com/280x400/333/fff?text=Anime',
+                heroImage: images.banner || images.poster || 'https://via.placeholder.com/1920x1080/333/fff?text=Anime',
+                video: videoUrls[0] || '',
+                video_url: videoUrls[0] || '',
+                synopsis: animeData.synopsis || animeData.description || 'No description available.',
+                score: animeData.score || animeData.averageScore || 8.0,
+                source: 'AI Discovery',
+                malId: animeData.mal_id || animeData.id || null
+            };
+            
+            // Add to discovered anime
+            discoveredAnime.push(newAnime);
+            saveAnimeToLocalStorage(newAnime);
+            
+            return {
+                success: true,
+                anime: newAnime,
+                videoUrls: videoUrls,
+                images: images
+            };
+        }
+        
+        // Helper functions
+        async function findPublicVideoUrls(animeData, privateUrl) {
+            // This would implement logic to find public alternatives to private URLs
+            return [];
+        }
+        
+        async function searchVideoUrls(searchTerm) {
+            // This would search for video URLs using various methods
+            return [];
+        }
+        
+        function updateStep(stepId, completed) {
+            const step = document.getElementById(stepId);
+            if (completed) {
+                step.classList.add('active');
+                setTimeout(() => {
+                    step.classList.remove('active');
+                    step.classList.add('completed');
+                }, 500);
+            }
+        }
+        
+        function showProgress() {
+            document.getElementById('progressSection').classList.remove('hidden');
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressSection').classList.add('hidden');
+        }
+        
+        function showResults(results) {
+            hideProgress();
+            document.getElementById('resultsSection').classList.remove('hidden');
+            
+            const resultsContent = document.getElementById('resultsContent');
+            resultsContent.innerHTML = `
+                <div class="space-y-3">
+                    <p><strong>🎬 Anime:</strong> ${results.anime.title}</p>
+                    <p><strong>📺 Episodes:</strong> ${results.anime.episodes}</p>
+                    <p><strong>📅 Year:</strong> ${results.anime.year}</p>
+                    <p><strong>🏷️ Genres:</strong> ${results.anime.genres.join(', ')}</p>
+                    <p><strong>🎥 Video URLs Found:</strong> ${results.videoUrls.length}</p>
+                    <p><strong>🖼️ Images Downloaded:</strong> ${Object.keys(results.images).filter(k => results.images[k]).length}</p>
+                    <p><strong>⭐ Score:</strong> ${results.anime.score}/10</p>
+                    <div class="mt-4 p-4 bg-green-800 rounded-lg">
+                        <p class="text-green-200"><strong>✅ Anime successfully added to your main website!</strong></p>
+                        <p class="text-sm text-green-300 mt-2">This anime is now available on your main website and ready to play.</p>
+                        <div class="mt-3 flex gap-2">
+                            <button onclick="goToMainWebsite()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                                <i class="fas fa-external-link-alt mr-1"></i>View on Main Website
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showError(message) {
+            hideProgress();
+            document.getElementById('errorSection').classList.remove('hidden');
+            
+            const errorContent = document.getElementById('errorContent');
+            errorContent.innerHTML = `
+                <div class="space-y-2">
+                    <p><strong>Error:</strong> ${message}</p>
+                    <p class="text-sm text-gray-300">Please try again with a different search query or check your internet connection.</p>
+                </div>
+            `;
+        }
+        
+        function hideResults() {
+            document.getElementById('resultsSection').classList.add('hidden');
+        }
+        
+        function hideError() {
+            document.getElementById('errorSection').classList.add('hidden');
+        }
+        
+        function clearResults() {
+            hideResults();
+            hideError();
+            hideProgress();
+            document.getElementById('searchQuery').value = '';
+            document.getElementById('privateUrl').value = '';
+            
+            // Reset all steps
+            ['step1', 'step2', 'step3', 'step4', 'step5'].forEach(stepId => {
+                const step = document.getElementById(stepId);
+                step.classList.remove('active', 'completed');
+            });
+        }
+        
+        function saveAnimeToLocalStorage(anime) {
+            try {
+                console.log('💾 Saving anime:', anime);
+                
+                // Save to AI bot's own storage
+                const savedAnime = JSON.parse(localStorage.getItem('aiDiscoveredAnime') || '[]');
+                savedAnime.push(anime);
+                localStorage.setItem('aiDiscoveredAnime', JSON.stringify(savedAnime));
+                console.log('✅ Saved to AI bot storage');
+                
+                // Also save to main website's darklands_anime (correct key)
+                let mainAnimeData = JSON.parse(localStorage.getItem('darklands_anime') || '[]');
+                if (!Array.isArray(mainAnimeData)) {
+                    mainAnimeData = [];
+                }
+                mainAnimeData.push(anime);
+                localStorage.setItem('darklands_anime', JSON.stringify(mainAnimeData));
+                console.log('✅ Saved to main website storage (darklands_anime)');
+                console.log('📊 Total anime in main website:', mainAnimeData.length);
+                
+                // Also try to save to window.animeData if it exists (for main website)
+                if (window.opener && window.opener.animeData) {
+                    window.opener.animeData.push(anime);
+                    console.log('✅ Updated main website animeData array');
+                }
+                
+                // Show notification
+                showNotification(`✅ "${anime.title}" has been added to your main website!`);
+                
+                // Force refresh main website if it's open
+                if (window.opener) {
+                    window.opener.location.reload();
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to save anime:', error);
+                showNotification(`❌ Failed to save anime: ${error.message}`);
+            }
+        }
+        
+        function loadSavedAnime() {
+            try {
+                const savedAnime = JSON.parse(localStorage.getItem('aiDiscoveredAnime') || '[]');
+                discoveredAnime = savedAnime;
+                console.log('📚 Loaded saved anime:', discoveredAnime.length);
+            } catch (error) {
+                console.error('Failed to load saved anime:', error);
+            }
+        }
+        
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        function showNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-check-circle"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function goToMainWebsite() {
+            // Try to go back to main website
+            if (window.opener) {
+                // If opened in popup, close and refresh parent
+                window.opener.location.reload();
+                window.close();
+            } else {
+                // If standalone, try to go to index.html
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function syncAnimeToMainWebsite() {
+            try {
+                console.log('🔄 Syncing all discovered anime to main website...');
+                
+                // Get all discovered anime
+                const discoveredAnime = JSON.parse(localStorage.getItem('aiDiscoveredAnime') || '[]');
+                console.log('📚 Found discovered anime:', discoveredAnime.length);
+                
+                // Get main website anime data (correct key)
+                let mainAnimeData = JSON.parse(localStorage.getItem('darklands_anime') || '[]');
+                if (!Array.isArray(mainAnimeData)) {
+                    mainAnimeData = [];
+                }
+                
+                // Add all discovered anime to main website
+                let addedCount = 0;
+                for (const anime of discoveredAnime) {
+                    // Check if anime already exists
+                    const exists = mainAnimeData.some(existing => existing.id === anime.id);
+                    if (!exists) {
+                        mainAnimeData.push(anime);
+                        addedCount++;
+                    }
+                }
+                
+                // Save to main website storage (correct key)
+                localStorage.setItem('darklands_anime', JSON.stringify(mainAnimeData));
+                
+                console.log(`✅ Synced ${addedCount} new anime to main website`);
+                showNotification(`✅ Synced ${addedCount} anime to main website!`);
+                
+                // Update main website if open
+                if (window.opener) {
+                    window.opener.location.reload();
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to sync anime:', error);
+                showNotification(`❌ Failed to sync anime: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darklands - Video Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --darklands-orange: #F47521;
+            --darklands-dark: #0e0e0e;
+            --darklands-gray: #1a1a1a;
+        }
+        
+        body {
+            background: var(--darklands-dark);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            overflow: hidden;
+        }
+        
+        .video-player {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .controls-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0.4), transparent);
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+        
+        .controls-overlay.show {
+            opacity: 1;
+        }
+        
+        .top-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0.4), transparent);
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 10;
+        }
+        
+        .top-overlay.show {
+            opacity: 1;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--darklands-orange);
+            border-radius: 3px;
+            transition: width 0.1s ease;
+            position: relative;
+        }
+        
+        .progress-thumb {
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            background: var(--darklands-orange);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .progress-bar:hover .progress-thumb {
+            opacity: 1;
+        }
+        
+        .control-button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            padding: 8px;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        
+        .control-button:hover {
+            color: var(--darklands-orange);
+        }
+        
+        .volume-slider {
+            width: 80px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .volume-fill {
+            height: 100%;
+            background: var(--darklands-orange);
+            border-radius: 2px;
+            transition: width 0.1s ease;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+        
+        .error-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(244, 117, 33, 0.3);
+            border-top: 4px solid var(--darklands-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .next-episode-btn {
+            background: var(--darklands-orange);
+            color: black;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .next-episode-btn:hover {
+            background: #e0661a;
+        }
+        
+        .speed-btn, .quality-btn {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .speed-btn:hover, .quality-btn:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: var(--darklands-orange);
+        }
+        
+        .time-display {
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: white;
+        }
+        
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+            z-index: 15;
+        }
+        
+        .close-btn:hover {
+            background: rgba(0,0,0,0.8);
+            color: var(--darklands-orange);
+        }
+        
+        @media (max-width: 768px) {
+            .controls-overlay {
+                padding: 15px;
+            }
+            
+            .top-overlay {
+                padding: 15px;
+            }
+            
+            .control-button {
+                font-size: 16px;
+                padding: 6px;
+            }
+            
+            .volume-slider {
+                width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container" id="videoContainer">
+        <!-- Main Video Element -->
+        <video id="videoPlayer" class="video-player" preload="metadata" playsinline webkit-playsinline>
+            <source id="videoSource" src="" type="video/mp4">
+            <p class="text-white text-center p-8">Your browser doesn't support HTML5 video.</p>
+        </video>
+        
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="text-center">
+                <div class="spinner"></div>
+                <p class="text-white text-lg mt-4">Loading video...</p>
+            </div>
+        </div>
+        
+        <!-- Error Overlay -->
+        <div class="error-overlay" id="errorOverlay">
+            <div class="text-center p-8">
+                <i class="fas fa-exclamation-triangle text-6xl text-red-500 mb-6"></i>
+                <h3 class="text-2xl font-bold text-white mb-4">Video Not Available</h3>
+                <p class="text-gray-300 mb-6">Unable to load the video file. Please try again.</p>
+                <div class="space-x-4">
+                    <button onclick="retryVideo()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+                        <i class="fas fa-redo mr-2"></i>Retry
+                    </button>
+                    <button onclick="closePlayer()" class="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Close Button -->
+        <button class="close-btn" onclick="goBack()">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        
+        <!-- Top Overlay -->
+        <div class="top-overlay" id="topOverlay">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-white text-xl font-bold" id="videoTitle">Loading...</h2>
+                    <p class="text-gray-300 text-sm" id="episodeInfo">Episode 1 of 1</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls Overlay -->
+        <div class="controls-overlay" id="controlsOverlay">
+            <!-- Progress Bar -->
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill">
+                    <div class="progress-thumb"></div>
+                </div>
+            </div>
+            
+            <!-- Control Buttons -->
+            <div class="flex items-center justify-between">
+                <!-- Left Controls -->
+                <div class="flex items-center space-x-6">
+                    <button class="control-button" id="playPauseBtn">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    
+                    <div class="flex items-center space-x-3">
+                        <button class="control-button" id="muteBtn">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        <div class="volume-slider" id="volumeSlider">
+                            <div class="volume-fill" id="volumeFill"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="time-display" id="currentTime">0:00</span>
+                        <span class="text-gray-400">/</span>
+                        <span class="time-display" id="totalTime">0:00</span>
+                    </div>
+                </div>
+                
+                <!-- Right Controls -->
+                <div class="flex items-center space-x-4">
+                    <button class="speed-btn" id="speedBtn">1x</button>
+                    <button class="quality-btn" id="qualityBtn">HD</button>
+                    <button class="next-episode-btn" id="nextEpisodeBtn">
+                        <i class="fas fa-forward mr-1"></i>Next Episode
+                    </button>
+                    <button class="control-button" id="fullscreenBtn">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let video = document.getElementById('videoPlayer');
+        let controlsOverlay = document.getElementById('controlsOverlay');
+        let topOverlay = document.getElementById('topOverlay');
+        let loadingOverlay = document.getElementById('loadingOverlay');
+        let errorOverlay = document.getElementById('errorOverlay');
+        let playPauseBtn = document.getElementById('playPauseBtn');
+        let muteBtn = document.getElementById('muteBtn');
+        let speedBtn = document.getElementById('speedBtn');
+        let qualityBtn = document.getElementById('qualityBtn');
+        let nextEpisodeBtn = document.getElementById('nextEpisodeBtn');
+        let fullscreenBtn = document.getElementById('fullscreenBtn');
+        let progressBar = document.getElementById('progressBar');
+        let progressFill = document.getElementById('progressFill');
+        let volumeSlider = document.getElementById('volumeSlider');
+        let volumeFill = document.getElementById('volumeFill');
+        let currentTimeEl = document.getElementById('currentTime');
+        let totalTimeEl = document.getElementById('totalTime');
+        let videoTitle = document.getElementById('videoTitle');
+        let episodeInfo = document.getElementById('episodeInfo');
+        let videoContainer = document.getElementById('videoContainer');
+        
+        // Player state
+        let isPlaying = false;
+        let isMuted = false;
+        let currentSpeed = 1;
+        let currentEpisode = 1;
+        let controlsTimeout;
+        let isDragging = false;
+        let totalEpisodes = 1;
+        let animeData = null;
+        
+        const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
+        
+        // Initialize player
+        function initPlayer() {
+            // Get video data from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoSrc = urlParams.get('video');
+            const title = urlParams.get('title');
+            const episodes = urlParams.get('episodes');
+            const currentEp = urlParams.get('episode');
+            
+            if (!videoSrc) {
+                showError('No video source provided');
+                return;
+            }
+            
+            // Set video data
+            animeData = {
+                title: title || 'Unknown Title',
+                episodes: parseInt(episodes) || 1,
+                currentEpisode: parseInt(currentEp) || 1
+            };
+            
+            currentEpisode = animeData.currentEpisode;
+            totalEpisodes = animeData.episodes;
+            
+            // Update UI
+            videoTitle.textContent = animeData.title;
+            updateEpisodeInfo();
+            
+            // Check if it's a YouTube video
+            if (isYouTubeVideo(videoSrc)) {
+                loadYouTubeVideo(videoSrc);
+            } else {
+                loadDirectVideo(videoSrc);
+            }
+            
+            // Setup event listeners
+            setupEventListeners();
+        }
+        
+        // Check if URL is YouTube video
+        function isYouTubeVideo(url) {
+            return url.includes('youtube.com') || url.includes('youtu.be');
+        }
+        
+        // Load YouTube video
+        function loadYouTubeVideo(url) {
+            const videoId = extractYouTubeId(url);
+            if (!videoId) {
+                showError('Invalid YouTube URL');
+                return;
+            }
+            
+            // Hide loading overlay
+            loadingOverlay.style.display = 'none';
+            
+            // Create YouTube iframe
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&fs=1&cc_load_policy=0`;
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            iframe.allowFullscreen = true;
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            
+            // Replace video element with iframe
+            const videoContainer = document.getElementById('videoContainer');
+            const videoElement = document.getElementById('videoPlayer');
+            videoContainer.replaceChild(iframe, videoElement);
+            
+            // Hide controls for YouTube (YouTube has its own)
+            document.getElementById('controlsOverlay').style.display = 'none';
+            document.getElementById('topOverlay').style.display = 'none';
+            
+            // Show YouTube info
+            document.getElementById('videoTitle').textContent = animeData.title + ' (YouTube)';
+            
+            console.log('YouTube video loaded:', videoId);
+        }
+        
+        // Extract YouTube video ID
+        function extractYouTubeId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+        
+        // Load direct video file
+        function loadDirectVideo(videoSrc) {
+            console.log('🎬 Loading video:', videoSrc);
+            
+            // Show loading overlay
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+            
+            // Check if it's YouTube (not supported)
+            if (videoSrc.includes('youtube.com') || videoSrc.includes('youtu.be')) {
+                console.log('❌ YouTube videos are not supported');
+                showErrorOverlay('YouTube videos are not supported.');
+                return;
+            }
+            
+            // Simple URL processing
+            let processedUrl = videoSrc;
+            
+            // Handle Google Drive URLs
+            if (videoSrc.includes('drive.google.com') && videoSrc.includes('/file/d/')) {
+                const fileId = videoSrc.match(/\/file\/d\/([a-zA-Z0-9-_]+)/);
+                if (fileId) {
+                    processedUrl = `https://drive.google.com/uc?export=download&id=${fileId[1]}`;
+                    console.log('✅ Converted Google Drive URL:', processedUrl);
+                }
+            }
+            
+            // Handle Dropbox URLs
+            if (videoSrc.includes('dropbox.com') && videoSrc.includes('?dl=0')) {
+                processedUrl = videoSrc.replace('?dl=0', '?dl=1');
+                console.log('✅ Converted Dropbox URL:', processedUrl);
+            }
+            
+            // Load video directly
+            loadVideoSimple(processedUrl);
+        }
+        
+        function loadVideoSimple(videoUrl) {
+            console.log('🎬 Loading video directly:', videoUrl);
+            
+            // Clear all handlers
+            video.onerror = null;
+            video.onloadstart = null;
+            video.oncanplay = null;
+            
+            video.onloadstart = function() {
+                console.log('📥 Video loading started');
+            };
+            
+            video.oncanplay = function() {
+                console.log('✅ Video loaded successfully');
+                hideLoadingOverlay();
+                video.play().catch(e => {
+                    console.log('Auto-play prevented:', e);
+                });
+            };
+            
+            video.onerror = function(e) {
+                console.error('❌ Video failed to load:', e);
+                hideLoadingOverlay();
+                showErrorOverlay('Video failed to load. Please check the video URL and try again.');
+            };
+            
+            // Set video source and load
+            video.src = videoUrl;
+            video.load();
+        }
+        
+        
+        
+        // Show error overlay
+        function showErrorOverlay(message) {
+            const errorOverlay = document.getElementById('errorOverlay');
+            const errorMessage = errorOverlay.querySelector('p');
+            if (errorMessage) {
+                errorMessage.innerHTML = message.replace(/\n/g, '<br>');
+            }
+            errorOverlay.classList.remove('hidden');
+        }
+        
+        // Hide loading overlay
+        function hideLoadingOverlay() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Show/hide controls
+            videoContainer.addEventListener('mousemove', showControls);
+            videoContainer.addEventListener('mouseenter', showControls);
+            videoContainer.addEventListener('mouseleave', hideControls);
+            
+            // Play/Pause
+            playPauseBtn.addEventListener('click', togglePlayPause);
+            video.addEventListener('click', togglePlayPause);
+            
+            // Mute
+            muteBtn.addEventListener('click', toggleMute);
+            
+            // Volume control
+            volumeSlider.addEventListener('click', (e) => {
+                const rect = volumeSlider.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const percentage = clickX / rect.width;
+                video.volume = Math.max(0, Math.min(1, percentage));
+                updateVolumeDisplay();
+            });
+            
+            // Speed control
+            speedBtn.addEventListener('click', () => {
+                const currentIndex = speeds.indexOf(currentSpeed);
+                const nextIndex = (currentIndex + 1) % speeds.length;
+                currentSpeed = speeds[nextIndex];
+                video.playbackRate = currentSpeed;
+                speedBtn.textContent = currentSpeed + 'x';
+            });
+            
+            // Fullscreen
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            
+            // Next episode
+            nextEpisodeBtn.addEventListener('click', nextEpisode);
+            
+            // Progress bar
+            progressBar.addEventListener('click', (e) => {
+                const rect = progressBar.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const percentage = clickX / rect.width;
+                video.currentTime = percentage * video.duration;
+            });
+            
+            // Video events
+            video.addEventListener('loadstart', () => {
+                console.log('Video loading started');
+                loadingOverlay.style.display = 'flex';
+            });
+            
+            video.addEventListener('loadedmetadata', () => {
+                console.log('Video metadata loaded');
+                totalTimeEl.textContent = formatTime(video.duration);
+                loadingOverlay.style.display = 'none';
+            });
+            
+            video.addEventListener('canplay', () => {
+                console.log('Video can start playing');
+                loadingOverlay.style.display = 'none';
+            });
+            
+            video.addEventListener('play', () => {
+                isPlaying = true;
+                playPauseBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            });
+            
+            video.addEventListener('pause', () => {
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+            });
+            
+            video.addEventListener('timeupdate', updateProgress);
+            
+            video.addEventListener('ended', () => {
+                isPlaying = false;
+                playPauseBtn.innerHTML = '<i class="fas fa-play"></i>';
+                
+                // Auto-play next episode
+                if (currentEpisode < totalEpisodes) {
+                    setTimeout(() => {
+                        if (confirm(`Episode ${currentEpisode} finished. Play next episode?`)) {
+                            nextEpisode();
+                        }
+                    }, 1000);
+                }
+            });
+            
+            video.addEventListener('error', (e) => {
+                console.error('Video error:', e);
+                loadingOverlay.style.display = 'none';
+                showError('Failed to load video');
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboard);
+            
+            // Fullscreen change
+            document.addEventListener('fullscreenchange', () => {
+                if (document.fullscreenElement) {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i>';
+                } else {
+                    fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i>';
+                }
+            });
+        }
+        
+        // Show controls
+        function showControls() {
+            controlsOverlay.classList.add('show');
+            topOverlay.classList.add('show');
+            clearTimeout(controlsTimeout);
+            controlsTimeout = setTimeout(hideControls, 3000);
+        }
+        
+        // Hide controls
+        function hideControls() {
+            if (!isPlaying) return;
+            controlsOverlay.classList.remove('show');
+            topOverlay.classList.remove('show');
+        }
+        
+        // Toggle play/pause
+        function togglePlayPause() {
+            if (isPlaying) {
+                video.pause();
+            } else {
+                video.play();
+            }
+        }
+        
+        // Toggle mute
+        function toggleMute() {
+            isMuted = !isMuted;
+            video.muted = isMuted;
+            muteBtn.innerHTML = isMuted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+        }
+        
+        // Update progress
+        function updateProgress() {
+            if (video.duration) {
+                const percentage = (video.currentTime / video.duration) * 100;
+                progressFill.style.width = percentage + '%';
+                currentTimeEl.textContent = formatTime(video.currentTime);
+            }
+        }
+        
+        // Update volume display
+        function updateVolumeDisplay() {
+            const percentage = video.volume * 100;
+            volumeFill.style.width = percentage + '%';
+        }
+        
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                videoContainer.requestFullscreen().catch(err => {
+                    console.log('Fullscreen not supported');
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Next episode
+        function nextEpisode() {
+            if (currentEpisode < totalEpisodes) {
+                currentEpisode++;
+                video.currentTime = 0;
+                video.play();
+                updateEpisodeInfo();
+            } else {
+                alert('This is the last episode!');
+            }
+        }
+        
+        // Update episode info
+        function updateEpisodeInfo() {
+            episodeInfo.textContent = `Episode ${currentEpisode} of ${totalEpisodes}`;
+        }
+        
+        // Handle keyboard shortcuts
+        function handleKeyboard(e) {
+            switch(e.key) {
+                case ' ':
+                    e.preventDefault();
+                    togglePlayPause();
+                    break;
+                case 'f':
+                case 'F':
+                    toggleFullscreen();
+                    break;
+                case 'm':
+                case 'M':
+                    toggleMute();
+                    break;
+                case 'ArrowRight':
+                    video.currentTime += 10;
+                    break;
+                case 'ArrowLeft':
+                    video.currentTime -= 10;
+                    break;
+                case 'ArrowUp':
+                    video.volume = Math.min(1, video.volume + 0.1);
+                    updateVolumeDisplay();
+                    break;
+                case 'ArrowDown':
+                    video.volume = Math.max(0, video.volume - 0.1);
+                    updateVolumeDisplay();
+                    break;
+                case 'Escape':
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                    } else {
+                        closePlayer();
+                    }
+                    break;
+            }
+        }
+        
+        // Show error
+        function showError(message) {
+            errorOverlay.style.display = 'flex';
+        }
+        
+        // Retry video
+        function retryVideo() {
+            console.log('🔄 Retrying video load...');
+            const errorOverlay = document.getElementById('errorOverlay');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            
+            if (errorOverlay) errorOverlay.classList.add('hidden');
+            if (loadingOverlay) loadingOverlay.classList.remove('hidden');
+            
+            // Get the original video source from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const videoSrc = urlParams.get('video');
+            
+            if (videoSrc) {
+                // Reinitialize the player with the original source
+                initPlayer();
+            } else {
+                console.error('❌ No video source found for retry');
+                showErrorOverlay('No video source available for retry. Please go back and try again.');
+            }
+        }
+        
+        // Test with sample video
+        function testWithSampleVideo() {
+            console.log('🧪 Testing with sample video...');
+            
+            const sampleVideoUrl = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+            
+            // Hide error overlay
+            const errorOverlay = document.getElementById('errorOverlay');
+            if (errorOverlay) {
+                errorOverlay.classList.add('hidden');
+            }
+            
+            // Show loading
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+            
+            // Load sample video
+            video.src = sampleVideoUrl;
+            video.load();
+            
+            video.oncanplay = function() {
+                console.log('✅ Sample video loaded successfully!');
+                hideLoadingOverlay();
+                video.play().catch(e => {
+                    console.log('Auto-play prevented:', e);
+                });
+            };
+            
+            video.onerror = function(e) {
+                console.error('❌ Even sample video failed:', e);
+                showErrorOverlay('Even the test video failed to load. This indicates a browser or network issue. Please check your internet connection and try refreshing the page.');
+            };
+        }
+        
+        // Go back to main site
+        function goBack() {
+            window.history.back();
+        }
+        
+        // Close player
+        function closePlayer() {
+            window.close();
+        }
+        
+        // Format time
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initPlayer);
+    </script>
+</body>
+</html>

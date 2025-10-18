@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darklands - Anime Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .darklands-bg { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); }
+        .darklands-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .darklands-btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.3s; border: none; cursor: pointer; }
+        .darklands-btn-primary { background: linear-gradient(135deg, #ff6b35, #f7931e); color: white; }
+        .darklands-btn-secondary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .darklands-btn-success { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; }
+        .darklands-btn-warning { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+        .darklands-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .darklands-input { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: white; padding: 0.75rem; border-radius: 0.5rem; width: 100%; }
+        .darklands-input::placeholder { color: rgba(255, 255, 255, 0.6); }
+        .darklands-input:focus { outline: none; border-color: #ff6b35; box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.3); }
+        .anime-card { transition: all 0.3s ease; }
+        .anime-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.4); }
+    </style>
+</head>
+<body class="darklands-bg min-h-screen text-white">
+    <!-- Header -->
+    <header class="bg-black bg-opacity-50 backdrop-blur-sm border-b border-gray-700">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-orange-500">🎬 Darklands Anime Manager</h1>
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="goToMainSite()" class="darklands-btn darklands-btn-primary">
+                        <i class="fas fa-home mr-2"></i>Main Site
+                    </button>
+                    <button onclick="refreshAnimeList()" class="darklands-btn darklands-btn-secondary">
+                        <i class="fas fa-sync mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+        <!-- Add Anime Form -->
+        <div class="darklands-card rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-6 text-center">Add New Anime</h2>
+            <form id="addAnimeForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-white mb-2">Anime Title *</label>
+                        <input type="text" id="animeTitle" class="darklands-input" placeholder="Enter anime title" required>
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Episodes *</label>
+                        <input type="number" id="animeEpisodes" class="darklands-input" placeholder="Number of episodes" required>
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Genres</label>
+                        <input type="text" id="animeGenre" class="darklands-input" placeholder="Action, Adventure, Romance">
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Year *</label>
+                        <input type="number" id="animeYear" class="darklands-input" placeholder="2024" required>
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Thumbnail URL</label>
+                        <input type="url" id="animeThumbnail" class="darklands-input" placeholder="https://example.com/image.jpg">
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Video URL *</label>
+                        <input type="url" id="animeVideo" class="darklands-input" placeholder="https://example.com/video.mp4" required>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-white mb-2">Description</label>
+                    <textarea id="animeDescription" class="darklands-input" rows="3" placeholder="Anime description..."></textarea>
+                </div>
+                <div class="flex justify-center">
+                    <button type="submit" class="darklands-btn darklands-btn-success text-lg px-8 py-3">
+                        <i class="fas fa-plus mr-2"></i>Add Anime
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Anime List -->
+        <div class="darklands-card rounded-lg p-6">
+            <h2 class="text-2xl font-bold mb-6 text-center">Current Anime Library</h2>
+            <div id="animeList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Anime cards will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Test Modal -->
+    <div id="videoTestModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-4xl w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-white">Video Test</h3>
+                <button onclick="closeVideoTest()" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <video id="testVideo" controls class="w-full h-64 bg-black rounded" style="display: none;">
+                    <source id="testVideoSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div id="videoTestInfo" class="text-center text-gray-400">
+                    <i class="fas fa-video text-4xl mb-4"></i>
+                    <p>Loading video...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let animeData = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAnimeData();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('addAnimeForm').addEventListener('submit', handleAddAnime);
+        }
+
+        function loadAnimeData() {
+            try {
+                const savedData = localStorage.getItem('darklands_anime');
+                if (savedData) {
+                    animeData = JSON.parse(savedData);
+                    console.log('📚 Loaded anime from localStorage:', animeData.length);
+                } else {
+                    animeData = [];
+                }
+                renderAnimeList();
+            } catch (error) {
+                console.error('Error loading anime data:', error);
+                animeData = [];
+            }
+        }
+
+        function handleAddAnime(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('animeTitle').value;
+            const episodes = parseInt(document.getElementById('animeEpisodes').value);
+            const genres = document.getElementById('animeGenre').value.split(',').map(g => g.trim());
+            const year = parseInt(document.getElementById('animeYear').value);
+            const thumb = document.getElementById('animeThumbnail').value;
+            const video = document.getElementById('animeVideo').value;
+            const description = document.getElementById('animeDescription').value;
+            
+            if (!title || !episodes || !year || !video) {
+                alert('Please fill in all required fields (Title, Episodes, Year, Video URL)');
+                return;
+            }
+            
+            const newAnime = {
+                id: `custom_${Date.now()}`,
+                title: title,
+                episodes: episodes,
+                genres: genres.length > 0 ? genres : ['Unknown'],
+                year: year,
+                thumb: thumb || 'https://via.placeholder.com/280x400/333/fff?text=No+Image',
+                heroImage: thumb || 'https://via.placeholder.com/1920x1080/333/fff?text=No+Image',
+                video: video,
+                video_url: video,
+                synopsis: description || 'No description available.',
+                score: 0,
+                source: 'Manual',
+                lastUpdated: Date.now()
+            };
+
+            // Add to animeData array
+            animeData.unshift(newAnime);
+            
+            // Save to localStorage
+            localStorage.setItem('darklands_anime', JSON.stringify(animeData));
+            
+            // Update display
+            renderAnimeList();
+            
+            // Reset form
+            document.getElementById('addAnimeForm').reset();
+            
+            // Show success message
+            showNotification(`✅ Anime "${title}" added successfully!`);
+            
+            // Test video
+            testVideo(video, newAnime);
+            
+            console.log('✅ Anime added:', newAnime);
+        }
+
+        function renderAnimeList() {
+            const animeList = document.getElementById('animeList');
+            
+            if (animeData.length === 0) {
+                animeList.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-gray-400">
+                        <i class="fas fa-video text-6xl mb-4"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Anime Added Yet</h3>
+                        <p>Add your first anime using the form above!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            animeList.innerHTML = animeData.map(anime => `
+                <div class="anime-card darklands-card rounded-lg p-4">
+                    <div class="aspect-w-3 aspect-h-4 mb-4">
+                        <img src="${anime.thumb}" alt="${anime.title}" class="w-full h-48 object-cover rounded-lg">
+                    </div>
+                    <div class="space-y-2">
+                        <h3 class="font-semibold text-lg truncate">${anime.title}</h3>
+                        <p class="text-gray-400 text-sm">${anime.year} • ${anime.episodes} episodes</p>
+                        <p class="text-gray-400 text-sm">${anime.genres.join(', ')}</p>
+                        <div class="flex space-x-2 mt-4">
+                            <button onclick="testVideo('${anime.video}', ${JSON.stringify(anime).replace(/"/g, '&quot;')})" class="darklands-btn darklands-btn-primary flex-1 text-sm">
+                                <i class="fas fa-play mr-1"></i>Test Video
+                            </button>
+                            <button onclick="playAnime('${anime.id}')" class="darklands-btn darklands-btn-success flex-1 text-sm">
+                                <i class="fas fa-external-link-alt mr-1"></i>Play
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function testVideo(videoUrl, anime) {
+            const modal = document.getElementById('videoTestModal');
+            const video = document.getElementById('testVideo');
+            const source = document.getElementById('testVideoSource');
+            const info = document.getElementById('videoTestInfo');
+            
+            // Show modal
+            modal.classList.remove('hidden');
+            
+            // Set video source
+            source.src = videoUrl;
+            video.load();
+            
+            // Show loading
+            video.style.display = 'none';
+            info.innerHTML = `
+                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                <p>Loading video...</p>
+            `;
+            
+            // Video event handlers
+            video.onloadstart = function() {
+                console.log('🎬 Video loading started');
+            };
+            
+            video.oncanplay = function() {
+                console.log('✅ Video can play');
+                video.style.display = 'block';
+                info.innerHTML = `
+                    <div class="text-green-400">
+                        <i class="fas fa-check-circle text-4xl mb-4"></i>
+                        <p>Video loaded successfully!</p>
+                        <p class="text-sm mt-2">Title: ${anime.title}</p>
+                    </div>
+                `;
+            };
+            
+            video.onerror = function() {
+                console.log('❌ Video failed to load');
+                video.style.display = 'none';
+                info.innerHTML = `
+                    <div class="text-red-400">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p>Video failed to load</p>
+                        <p class="text-sm mt-2">URL: ${videoUrl}</p>
+                        <p class="text-xs mt-1">Check if the URL is accessible</p>
+                    </div>
+                `;
+            };
+        }
+
+        function closeVideoTest() {
+            document.getElementById('videoTestModal').classList.add('hidden');
+            const video = document.getElementById('testVideo');
+            video.pause();
+            video.currentTime = 0;
+        }
+
+        function playAnime(animeId) {
+            const anime = animeData.find(a => a.id === animeId);
+            if (anime) {
+                const playerUrl = `player.html?video=${encodeURIComponent(anime.video)}&title=${encodeURIComponent(anime.title)}&episodes=${anime.episodes}&episode=1`;
+                window.open(playerUrl, '_blank');
+            }
+        }
+
+        function refreshAnimeList() {
+            loadAnimeData();
+            showNotification('🔄 Anime list refreshed!');
+        }
+
+        function goToMainSite() {
+            window.location.href = 'index.html';
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

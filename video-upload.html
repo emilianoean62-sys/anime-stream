@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darklands - Video Upload</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --darklands-orange: #F47521;
+            --darklands-dark: #0e0e0e;
+            --darklands-gray: #1a1a1a;
+        }
+        
+        body {
+            background: var(--darklands-dark);
+            color: white;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .upload-area {
+            border: 2px dashed #4a5568;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area.dragover {
+            border-color: var(--darklands-orange);
+            background-color: rgba(244, 117, 33, 0.1);
+        }
+        
+        .video-preview {
+            max-width: 300px;
+            max-height: 200px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-white">Darklands Video Upload</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="index.html" class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors">
+                        <i class="fas fa-home mr-2"></i>Back to Main Site
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Upload Section -->
+            <div class="bg-gray-800 rounded-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Upload Video</h2>
+                
+                <!-- Upload Area -->
+                <div id="uploadArea" class="upload-area rounded-lg p-12 text-center cursor-pointer">
+                    <div class="space-y-4">
+                        <i class="fas fa-cloud-upload-alt text-6xl text-gray-400"></i>
+                        <div>
+                            <p class="text-xl text-white mb-2">Drop your video here or click to browse</p>
+                            <p class="text-gray-400">Supports MP4, WebM, AVI, MOV files</p>
+                        </div>
+                        <input type="file" id="videoFile" accept="video/*" class="hidden" multiple>
+                        <button id="browseBtn" class="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors">
+                            <i class="fas fa-folder-open mr-2"></i>Browse Files
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Upload Progress -->
+                <div id="uploadProgress" class="hidden mt-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-white">Uploading...</span>
+                        <span id="progressText" class="text-gray-400">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2">
+                        <div id="progressBar" class="bg-orange-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video URL Section -->
+            <div class="bg-gray-800 rounded-lg p-8 mb-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Add Video URL</h2>
+                
+                <form id="urlForm" class="space-y-4">
+                    <div>
+                        <label class="block text-white mb-2">Video URL</label>
+                        <input type="url" id="videoUrl" class="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-orange-500 focus:outline-none" 
+                               placeholder="https://example.com/video.mp4" required>
+                    </div>
+                    <div>
+                        <label class="block text-white mb-2">Video Title</label>
+                        <input type="text" id="videoTitle" class="w-full px-4 py-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-orange-500 focus:outline-none" 
+                               placeholder="Enter video title" required>
+                    </div>
+                    <button type="submit" class="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition-colors">
+                        <i class="fas fa-link mr-2"></i>Add Video URL
+                    </button>
+                </form>
+            </div>
+
+            <!-- Uploaded Videos -->
+            <div class="bg-gray-800 rounded-lg p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Your Videos</h2>
+                <div id="videoList" class="space-y-4">
+                    <!-- Videos will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Video Player Modal -->
+    <div id="playerModal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden">
+        <div class="flex items-center justify-center h-full">
+            <div class="relative w-full h-full max-w-7xl mx-auto">
+                <!-- Close Button -->
+                <button id="closePlayer" class="absolute top-4 right-4 z-10 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+                
+                <!-- Video Player -->
+                <video id="videoPlayer" class="w-full h-full object-contain" controls>
+                    <source src="" type="video/mp4">
+                    Your browser doesn't support HTML5 video.
+                </video>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let uploadedVideos = JSON.parse(localStorage.getItem('darklands_uploaded_videos') || '[]');
+        
+        // DOM elements
+        const uploadArea = document.getElementById('uploadArea');
+        const videoFile = document.getElementById('videoFile');
+        const browseBtn = document.getElementById('browseBtn');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const urlForm = document.getElementById('urlForm');
+        const videoUrl = document.getElementById('videoUrl');
+        const videoTitle = document.getElementById('videoTitle');
+        const videoList = document.getElementById('videoList');
+        const playerModal = document.getElementById('playerModal');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const closePlayer = document.getElementById('closePlayer');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeUpload();
+            loadVideoList();
+        });
+
+        function initializeUpload() {
+            // Upload area click
+            uploadArea.addEventListener('click', () => videoFile.click());
+            browseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                videoFile.click();
+            });
+
+            // Drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileUpload(files);
+                }
+            });
+
+            // File input change
+            videoFile.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileUpload(e.target.files);
+                }
+            });
+
+            // URL form submit
+            urlForm.addEventListener('submit', handleUrlSubmit);
+
+            // Player modal close
+            closePlayer.addEventListener('click', () => {
+                playerModal.classList.add('hidden');
+                videoPlayer.pause();
+                videoPlayer.src = '';
+            });
+        }
+
+        function handleFileUpload(files) {
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('video/')) {
+                    uploadVideo(file);
+                } else {
+                    alert('Please select a video file.');
+                }
+            });
+        }
+
+        function uploadVideo(file) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const videoData = {
+                    id: Date.now().toString(),
+                    title: file.name.replace(/\.[^/.]+$/, ""),
+                    url: e.target.result,
+                    type: 'uploaded',
+                    size: file.size,
+                    date: new Date().toISOString(),
+                    duration: 0
+                };
+
+                // Get video duration
+                const video = document.createElement('video');
+                video.src = e.target.result;
+                video.onloadedmetadata = function() {
+                    videoData.duration = video.duration;
+                    saveVideo(videoData);
+                };
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        function handleUrlSubmit(e) {
+            e.preventDefault();
+            
+            const url = videoUrl.value.trim();
+            const title = videoTitle.value.trim();
+            
+            if (!url || !title) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            const videoData = {
+                id: Date.now().toString(),
+                title: title,
+                url: url,
+                type: 'url',
+                date: new Date().toISOString(),
+                duration: 0
+            };
+
+            saveVideo(videoData);
+            urlForm.reset();
+        }
+
+        function saveVideo(videoData) {
+            uploadedVideos.unshift(videoData);
+            localStorage.setItem('darklands_uploaded_videos', JSON.stringify(uploadedVideos));
+            loadVideoList();
+            showNotification(`✅ Video "${videoData.title}" added successfully!`);
+            
+            // Force refresh main site by updating localStorage and triggering event
+            try {
+                // Update localStorage with timestamp to trigger change
+                localStorage.setItem('darklands_video_update', Date.now().toString());
+                
+                // Try multiple notification methods
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'video_uploaded',
+                        video: videoData,
+                        timestamp: Date.now()
+                    }, '*');
+                    console.log('✅ Notified main site via opener');
+                }
+                
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'video_uploaded',
+                        video: videoData,
+                        timestamp: Date.now()
+                    }, '*');
+                    console.log('✅ Notified main site via parent');
+                }
+                
+                // Also try to trigger a custom event
+                if (window.opener) {
+                    window.opener.dispatchEvent(new CustomEvent('videoUploaded', {
+                        detail: videoData
+                    }));
+                }
+                
+            } catch (error) {
+                console.log('❌ Communication error:', error);
+            }
+        }
+
+        function loadVideoList() {
+            videoList.innerHTML = '';
+            
+            if (uploadedVideos.length === 0) {
+                videoList.innerHTML = '<p class="text-gray-400 text-center py-8">No videos uploaded yet.</p>';
+                return;
+            }
+
+            uploadedVideos.forEach(video => {
+                const videoItem = document.createElement('div');
+                videoItem.className = 'bg-gray-700 rounded-lg p-4 flex items-center space-x-4';
+                
+                videoItem.innerHTML = `
+                    <div class="flex-shrink-0">
+                        <div class="w-20 h-12 bg-gray-600 rounded flex items-center justify-center">
+                            <i class="fas fa-play text-gray-400"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow">
+                        <h3 class="text-white font-semibold">${video.title}</h3>
+                        <p class="text-gray-400 text-sm">
+                            ${video.type === 'uploaded' ? 'Uploaded File' : 'URL Video'} • 
+                            ${new Date(video.date).toLocaleDateString()}
+                        </p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="playVideo('${video.id}')" class="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors">
+                            <i class="fas fa-play mr-2"></i>Play
+                        </button>
+                        <button onclick="deleteVideo('${video.id}')" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                            <i class="fas fa-trash mr-2"></i>Delete
+                        </button>
+                    </div>
+                `;
+                
+                videoList.appendChild(videoItem);
+            });
+        }
+
+        function playVideo(videoId) {
+            const video = uploadedVideos.find(v => v.id === videoId);
+            if (video) {
+                videoPlayer.src = video.url;
+                playerModal.classList.remove('hidden');
+                videoPlayer.play();
+            }
+        }
+
+        function deleteVideo(videoId) {
+            if (confirm('Are you sure you want to delete this video?')) {
+                uploadedVideos = uploadedVideos.filter(v => v.id !== videoId);
+                localStorage.setItem('darklands_uploaded_videos', JSON.stringify(uploadedVideos));
+                loadVideoList();
+                showNotification('Video deleted successfully!');
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Make functions global for onclick handlers
+        window.playVideo = playVideo;
+        window.deleteVideo = deleteVideo;
+    </script>
+</body>
+</html>
